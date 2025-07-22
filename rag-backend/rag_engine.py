@@ -21,7 +21,9 @@ class RAGEngine:
 
             self.vectorstore = Chroma(
                         persist_directory="chroma_db",
-        embedding_function=OllamaEmbeddings(model=embedding_model))
+        embedding_function=OllamaEmbeddings(model=embedding_model,
+                                            base_url=os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")))
+
 
 
 
@@ -49,7 +51,7 @@ class RAGEngine:
         elif llm_name == "ollama":
             llm = Ollama(
                 model="llama3.2",                     # Change if you use a different LLaMA variant
-            base_url=os.getenv("OLLAMA_BASE_URL", "http://ollama:11434"),  # ✅ Uses env var
+                base_url=os.getenv("OLLAMA_BASE_URL", "http://ollama:11434"),  # ✅ Uses env var
                 temperature=0.7
             )
         elif llm_name == "gemini":

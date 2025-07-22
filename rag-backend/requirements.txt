@@ -5,6 +5,7 @@ langchain
 langchain-community
 langchain-google-genai
 chromadb
-pypdfdo
+pypdf
 python-multipart
 tiktoken
+ 
