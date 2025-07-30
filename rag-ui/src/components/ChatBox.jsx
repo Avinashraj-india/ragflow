@@ -92,7 +92,10 @@ const ChatBox = () => {
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           className="flex-1 outline-none bg-transparent text-gray-800 placeholder:text-gray-400"
         />
-        <button onClick={handleSend} className="text-blue-600 hover:text-blue-800 transition">
+        <button
+          onClick={handleSend}
+          className="text-blue-600 hover:text-blue-800 transition"
+        >
           <Send className="w-5 h-5" />
         </button>
       </div>

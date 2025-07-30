@@ -6,7 +6,10 @@ import ColorModeSelect from '../../shared-theme/ColorModeSelect';
 import SignInCard from './components/SignInCard';
 import Content from './components/Content';
 
+
+
 export default function SignInSide(props: { disableCustomTheme?: boolean }) {
+  
   return (
     <AppTheme {...props}>
       <CssBaseline enableColorScheme />
