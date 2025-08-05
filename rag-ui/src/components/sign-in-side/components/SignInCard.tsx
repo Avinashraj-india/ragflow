@@ -12,8 +12,9 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { styled } from '@mui/material/styles';
 import ForgotPassword from './ForgotPassword';
-import { GoogleIcon, FacebookIcon, SitemarkIcon } from './CustomIcons';
+import { FacebookIcon, SitemarkIcon } from './CustomIcons';
 import { useNavigate } from 'react-router-dom';
+import GoogleSSO from '../../../GoogleSSO';
 
 
 
@@ -97,6 +98,10 @@ export default function SignInCard() {
     return isValid;
   };
 
+
+
+
+
   return (
     <Card variant="outlined">
       <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
@@ -168,37 +173,27 @@ export default function SignInCard() {
         <Button type="submit" fullWidth variant="contained">
           Sign in
         </Button>
+        <Divider>or</Divider>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <GoogleSSO buttonText="Sign in with Google" />
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => alert('Facebook SSO')}
+            startIcon={<FacebookIcon />}
+          >
+            Sign in with Facebook
+          </Button>
+        </Box>
         <Typography sx={{ textAlign: 'center' }}>
           Don&apos;t have an account?{' '}
-          <span>
-            <Link
-              href="/material-ui/getting-started/templates/sign-in/"
-              variant="body2"
-              sx={{ alignSelf: 'center' }}
-            >
-              Sign up
-            </Link>
+          <span
+            onClick={() => navigate('/signup')}
+            style={{ color: 'green', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Sign up
           </span>
         </Typography>
-      </Box>
-      <Divider>or</Divider>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Button
-          fullWidth
-          variant="outlined"
-          onClick={() => alert('Sign in with Google')}
-          startIcon={<GoogleIcon />}
-        >
-          Sign in with Google
-        </Button>
-        <Button
-          fullWidth
-          variant="outlined"
-          onClick={() => alert('Sign in with Facebook')}
-          startIcon={<FacebookIcon />}
-        >
-          Sign in with Facebook
-        </Button>
       </Box>
     </Card>
   );

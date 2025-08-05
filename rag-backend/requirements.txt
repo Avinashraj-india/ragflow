@@ -8,4 +8,5 @@ chromadb
 pypdf
 python-multipart
 tiktoken
- 
+google-auth
+PyJWT
