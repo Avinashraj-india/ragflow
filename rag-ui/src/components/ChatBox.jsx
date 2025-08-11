@@ -128,6 +128,7 @@ const ChatBox = () => {
   const [messages, setMessages] = useState([]);
   const [file, setFile] = useState(null);
   const [userTeam, setUserTeam] = useState("legal");
+  const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([
     { id: 1, title: "Document Analysis", preview: "Can you analyze this contract?", active: false },
     { id: 2, title: "Legal Research", preview: "What are the implications of...", active: false },
@@ -154,40 +155,89 @@ const ChatBox = () => {
   };
 
   const handleSend = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || isLoading) return;
 
-    const userMessage = { text: message, sender: "user" };
+    const currentMessage = message;
+    setMessage(""); // Clear input immediately
+    setIsLoading(true);
+
+    const userMessage = { text: currentMessage, sender: "user" };
     setMessages((prev) => [...prev, userMessage]);
+
+    // Add typing indicator
+    const typingMessage = { text: "Thinking...", sender: "bot", isTyping: true };
+    setMessages((prev) => [...prev, typingMessage]);
 
     // Update chat history with first message as title
     if (messages.length === 0) {
       setChatHistory(prev => prev.map(chat => 
-        chat.active ? { ...chat, title: message.substring(0, 30) + (message.length > 30 ? '...' : ''), preview: message } : chat
+        chat.active ? { ...chat, title: currentMessage.substring(0, 30) + (currentMessage.length > 30 ? '...' : ''), preview: currentMessage } : chat
       ));
     }
 
     try {
-      const response = await axios.post(`${backendURL}/ask`, {
-        query: message,
-        group: userTeam.toLowerCase(),
-        llm: "ollama",
+      // Remove typing indicator and add streaming message
+      const streamingMessageId = Date.now();
+      setMessages((prev) => prev.filter(msg => !msg.isTyping).concat({
+        id: streamingMessageId,
+        text: "",
+        sender: "bot",
+        isStreaming: true
+      }));
+
+      const response = await fetch(`${backendURL}/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: currentMessage,
+          group: userTeam.toLowerCase(),
+          llm: "ollama",
+          stream: true
+        })
       });
 
-      const botReply = {
-        text: response?.data?.response || "No response",
-        sender: "bot",
-      };
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedText = "";
 
-      setMessages((prev) => [...prev, botReply]);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim());
+        
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+            if (data.response) {
+              accumulatedText += data.response;
+              setMessages((prev) => prev.map(msg => 
+                msg.id === streamingMessageId 
+                  ? { ...msg, text: accumulatedText }
+                  : msg
+              ));
+            }
+          } catch (e) {
+            // Skip invalid JSON lines
+          }
+        }
+      }
+
+      // Mark streaming as complete
+      setMessages((prev) => prev.map(msg => 
+        msg.id === streamingMessageId 
+          ? { ...msg, isStreaming: false }
+          : msg
+      ));
     } catch (error) {
       console.error("Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        { text: "Failed to reach server.", sender: "bot" },
-      ]);
+      setMessages((prev) => prev.filter(msg => !msg.isTyping).concat({
+        text: "Failed to reach server.", sender: "bot"
+      }));
+    } finally {
+      setIsLoading(false);
     }
-
-    setMessage("");
   };
 
   const handleNewChat = () => {
@@ -387,7 +437,12 @@ const ChatBox = () => {
                 placeholder="Message RAG Assistant..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
                 multiline
                 maxRows={4}
                 sx={{

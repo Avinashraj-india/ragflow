@@ -1,6 +1,8 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+import json
 from rag_engine import RAGEngine
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -29,13 +31,20 @@ app.add_middleware(
 class Question(BaseModel):
     query: str
     llm: str  # 'openai', 'gemini', 'ollama'
+    stream: bool = False
 
 @app.post("/ask")
 def ask_question(payload: Question):
-    print(f"Received Query: {payload.query}, LLM: {payload.llm}")
+    print(f"Received Query: {payload.query}, LLM: {payload.llm}, Stream: {payload.stream}")
     try:
-        response = rag.query(payload.query, payload.llm)
-        return {"response": response}
+        if payload.stream:
+            def generate_stream():
+                for chunk in rag.query_stream(payload.query, payload.llm):
+                    yield f"{json.dumps({'response': chunk})}\n"
+            return StreamingResponse(generate_stream(), media_type="text/plain")
+        else:
+            response = rag.query(payload.query, payload.llm)
+            return {"response": response}
     except Exception as e:
         print("Error in /ask:", str(e))
         return {"error": str(e)}

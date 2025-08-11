@@ -50,8 +50,8 @@ class RAGEngine:
             llm = OpenAI()
         elif llm_name == "ollama":
             llm = Ollama(
-                model="llama3.2",                     # Change if you use a different LLaMA variant
-                base_url=os.getenv("OLLAMA_BASE_URL", "http://ollama:11434"),  # ✅ Uses env var
+                model="llama3.2:1b",
+                base_url=os.getenv("OLLAMA_BASE_URL", "http://ollama:11434"),
                 temperature=0.7
             )
         elif llm_name == "gemini":
@@ -61,4 +61,26 @@ class RAGEngine:
 
         qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
         return qa.run(question)
+
+    def query_stream(self, question: str, llm_name: str):
+        retriever = self.vectorstore.as_retriever()
+        docs = retriever.get_relevant_documents(question)
+        context = "\n".join([doc.page_content for doc in docs])
+        
+        prompt = f"Context: {context}\n\nQuestion: {question}\n\nAnswer:"
+        
+        if llm_name == "ollama":
+            llm = Ollama(
+                model="llama3.2:1b",
+                base_url=os.getenv("OLLAMA_BASE_URL", "http://ollama:11434"),
+                temperature=0.7
+            )
+            # Stream tokens from Ollama
+            for chunk in llm.stream(prompt):
+                yield chunk
+        else:
+            # Fallback to non-streaming for other LLMs
+            response = self.query(question, llm_name)
+            for char in response:
+                yield char
 

@@ -14,6 +14,10 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
+# Set build-time environment variables
+ENV VITE_BACKEND_URL=http://localhost:8000
+ENV VITE_GOOGLE_CLIENT_ID=443599365399-ahk30e024d6v8rnut75r0m8vj700vetq.apps.googleusercontent.com
+
 # Build the application
 RUN npm run build
 
