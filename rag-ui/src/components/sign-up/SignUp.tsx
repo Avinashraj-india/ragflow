@@ -12,6 +12,8 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import { styled } from '@mui/material/styles';
 import AppTheme from '../../shared-theme/AppTheme';
 import ColorModeSelect from '../../shared-theme/ColorModeSelect';
@@ -69,6 +71,16 @@ export default function SignUp(props: { disableCustomTheme?: boolean }) {
   const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
   const [nameError, setNameError] = React.useState(false);
   const [nameErrorMessage, setNameErrorMessage] = React.useState('');
+  const [team, setTeam] = React.useState('');
+  const [teamError, setTeamError] = React.useState(false);
+  const [teams, setTeams] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/teams`)
+      .then(res => res.json())
+      .then(data => setTeams(data.teams))
+      .catch(err => console.error('Failed to load teams:', err));
+  }, []);
 
   const validateInputs = () => {
     const email = document.getElementById('email') as HTMLInputElement;
@@ -104,21 +116,42 @@ export default function SignUp(props: { disableCustomTheme?: boolean }) {
       setNameErrorMessage('');
     }
 
+    if (!team) {
+      setTeamError(true);
+      isValid = false;
+    } else {
+      setTeamError(false);
+    }
+
     return isValid;
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    if (nameError || emailError || passwordError) {
-      event.preventDefault();
-      return;
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (validateInputs()) {
+      const name = (document.getElementById('name') as HTMLInputElement).value;
+      const email = (document.getElementById('email') as HTMLInputElement).value;
+      const password = (document.getElementById('password') as HTMLInputElement).value;
+      
+      try {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/signup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, team })
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('token', data.token);
+          navigate('/chat');
+        } else {
+          const error = await res.json();
+          alert(error.detail || 'Signup failed');
+        }
+      } catch (error) {
+        alert('Signup failed');
+      }
     }
-    const data = new FormData(event.currentTarget);
-    console.log({
-      name: data.get('name'),
-      lastName: data.get('lastName'),
-      email: data.get('email'),
-      password: data.get('password'),
-    });
   };
 
 
@@ -188,6 +221,22 @@ export default function SignUp(props: { disableCustomTheme?: boolean }) {
                 helperText={passwordErrorMessage}
                 color={passwordError ? 'error' : 'primary'}
               />
+            </FormControl>
+            <FormControl error={teamError}>
+              <FormLabel>Team</FormLabel>
+              <Select
+                value={team}
+                onChange={(e) => setTeam(e.target.value)}
+                displayEmpty
+                required
+              >
+                <MenuItem value="">Select Team</MenuItem>
+                {teams.map((teamName) => (
+                  <MenuItem key={teamName} value={teamName}>
+                    {teamName}
+                  </MenuItem>
+                ))}
+              </Select>
             </FormControl>
             <FormControlLabel
               control={<Checkbox value="allowExtraEmails" color="primary" />}

@@ -17,6 +17,7 @@ services:
       - "8000:8000"
     volumes:
       - ./rag-backend:/app
+      - sqlite_data:/app/data
     depends_on:
       - chroma
       - ollama
@@ -55,3 +56,4 @@ services:
 volumes:
   chroma_data:
   ollama_data:
+  sqlite_data:

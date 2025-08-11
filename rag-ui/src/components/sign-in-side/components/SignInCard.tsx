@@ -64,10 +64,29 @@ export default function SignInCard() {
   //   });
   // };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (validateInputs()) {
-      navigate('/chat');
+      const email = (document.getElementById('email') as HTMLInputElement).value;
+      const password = (document.getElementById('password') as HTMLInputElement).value;
+      
+      try {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('token', data.token);
+          navigate('/chat');
+        } else {
+          alert('Invalid credentials');
+        }
+      } catch (error) {
+        alert('Login failed');
+      }
     }
   };
 
