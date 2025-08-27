@@ -1,5 +1,14 @@
 import React, { useState } from "react";
-import { Send, Plus, LogOut, Upload, Bot, User, MessageSquare, Menu } from "lucide-react";
+import {
+  Send,
+  Plus,
+  LogOut,
+  Upload,
+  Bot,
+  User,
+  MessageSquare,
+  Menu,
+} from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
@@ -130,9 +139,24 @@ const ChatBox = () => {
   const [userTeam, setUserTeam] = useState("legal");
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([
-    { id: 1, title: "Document Analysis", preview: "Can you analyze this contract?", active: false },
-    { id: 2, title: "Legal Research", preview: "What are the implications of...", active: false },
-    { id: 3, title: "Current Chat", preview: "How can I help you today?", active: true },
+    {
+      id: 1,
+      title: "Document Analysis",
+      preview: "Can you analyze this contract?",
+      active: false,
+    },
+    {
+      id: 2,
+      title: "Legal Research",
+      preview: "What are the implications of...",
+      active: false,
+    },
+    {
+      id: 3,
+      title: "Current Chat",
+      preview: "How can I help you today?",
+      active: true,
+    },
   ]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
@@ -165,35 +189,53 @@ const ChatBox = () => {
     setMessages((prev) => [...prev, userMessage]);
 
     // Add typing indicator
-    const typingMessage = { text: "Thinking...", sender: "bot", isTyping: true };
+    const typingMessage = {
+      text: "Thinking...",
+      sender: "bot",
+      isTyping: true,
+    };
     setMessages((prev) => [...prev, typingMessage]);
 
     // Update chat history with first message as title
     if (messages.length === 0) {
-      setChatHistory(prev => prev.map(chat => 
-        chat.active ? { ...chat, title: currentMessage.substring(0, 30) + (currentMessage.length > 30 ? '...' : ''), preview: currentMessage } : chat
-      ));
+      setChatHistory((prev) =>
+        prev.map((chat) =>
+          chat.active
+            ? {
+                ...chat,
+                title:
+                  currentMessage.substring(0, 30) +
+                  (currentMessage.length > 30 ? "..." : ""),
+                preview: currentMessage,
+              }
+            : chat
+        )
+      );
     }
 
     try {
       // Remove typing indicator and add streaming message
       const streamingMessageId = Date.now();
-      setMessages((prev) => prev.filter(msg => !msg.isTyping).concat({
-        id: streamingMessageId,
-        text: "",
-        sender: "bot",
-        isStreaming: true
-      }));
+      setMessages((prev) =>
+        prev
+          .filter((msg) => !msg.isTyping)
+          .concat({
+            id: streamingMessageId,
+            text: "",
+            sender: "bot",
+            isStreaming: true,
+          })
+      );
 
-      const response = await fetch(`${backendURL}/ask`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(`${backendURL}/kag/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: currentMessage,
           group: userTeam.toLowerCase(),
           llm: "ollama",
-          stream: true
-        })
+          stream: true,
+        }),
       });
 
       const reader = response.body.getReader();
@@ -203,38 +245,46 @@ const ChatBox = () => {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.trim());
-        
+        const lines = chunk.split("\n").filter((line) => line.trim());
+
         for (const line of lines) {
           try {
             const data = JSON.parse(line);
             if (data.response) {
               accumulatedText += data.response;
-              setMessages((prev) => prev.map(msg => 
-                msg.id === streamingMessageId 
-                  ? { ...msg, text: accumulatedText }
-                  : msg
-              ));
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === streamingMessageId
+                    ? { ...msg, text: accumulatedText }
+                    : msg
+                )
+              );
             }
           } catch (e) {
             // Skip invalid JSON lines
+            console.log("Invalid JSON line:", e, line);
           }
         }
       }
 
       // Mark streaming as complete
-      setMessages((prev) => prev.map(msg => 
-        msg.id === streamingMessageId 
-          ? { ...msg, isStreaming: false }
-          : msg
-      ));
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === streamingMessageId ? { ...msg, isStreaming: false } : msg
+        )
+      );
     } catch (error) {
       console.error("Error:", error);
-      setMessages((prev) => prev.filter(msg => !msg.isTyping).concat({
-        text: "Failed to reach server.", sender: "bot"
-      }));
+      setMessages((prev) =>
+        prev
+          .filter((msg) => !msg.isTyping)
+          .concat({
+            text: "Failed to reach server.",
+            sender: "bot",
+          })
+      );
     } finally {
       setIsLoading(false);
     }
@@ -243,14 +293,21 @@ const ChatBox = () => {
   const handleNewChat = () => {
     setMessages([]);
     const newChatId = chatHistory.length + 1;
-    setChatHistory(prev => [
-      ...prev.map(chat => ({ ...chat, active: false })),
-      { id: newChatId, title: "New Chat", preview: "How can I help you today?", active: true }
+    setChatHistory((prev) => [
+      ...prev.map((chat) => ({ ...chat, active: false })),
+      {
+        id: newChatId,
+        title: "New Chat",
+        preview: "How can I help you today?",
+        active: true,
+      },
     ]);
   };
 
   const handleChatSelect = (chatId) => {
-    setChatHistory(prev => prev.map(chat => ({ ...chat, active: chat.id === chatId })));
+    setChatHistory((prev) =>
+      prev.map((chat) => ({ ...chat, active: chat.id === chatId }))
+    );
     // In a real app, you'd load the messages for this chat
     setMessages([]);
   };
@@ -263,12 +320,16 @@ const ChatBox = () => {
     formData.append("file", file);
 
     try {
-      const res = await axios.post(`${backendURL}/upload`, formData, {
+      const res = await axios.post(`${backendURL}/kag/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
       alert("File uploaded and indexed.");
+      setFile(null); // Reset file after successful upload
+      // Reset the file input
+      const fileInput = document.getElementById('file-upload');
+      if (fileInput) fileInput.value = '';
     } catch (error) {
       console.error("Upload failed:", error);
       alert("Upload failed.");
@@ -288,13 +349,13 @@ const ChatBox = () => {
             sx={{
               borderColor: "#4d4d4d",
               color: "#fff",
-              "&:hover": { borderColor: "#6d6d6d", bgcolor: "#2d2d2d" }
+              "&:hover": { borderColor: "#6d6d6d", bgcolor: "#2d2d2d" },
             }}
           >
             New Chat
           </Button>
         </SidebarHeader>
-        
+
         <Box sx={{ flex: 1, overflowY: "auto" }}>
           <List sx={{ p: 0 }}>
             {chatHistory.map((chat) => (
@@ -303,12 +364,18 @@ const ChatBox = () => {
                 active={chat.active}
                 onClick={() => handleChatSelect(chat.id)}
               >
-                <MessageSquare size={16} style={{ marginRight: 12, color: "#9ca3af" }} />
+                <MessageSquare
+                  size={16}
+                  style={{ marginRight: 12, color: "#9ca3af" }}
+                />
                 <ListItemText
                   primary={
                     <Typography
                       variant="body2"
-                      sx={{ color: "#fff", fontWeight: chat.active ? 600 : 400 }}
+                      sx={{
+                        color: "#fff",
+                        fontWeight: chat.active ? 600 : 400,
+                      }}
                     >
                       {chat.title}
                     </Typography>
@@ -323,7 +390,7 @@ const ChatBox = () => {
             ))}
           </List>
         </Box>
-        
+
         <Box sx={{ p: 2, borderTop: "1px solid #2d2d2d" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
             <Avatar sx={{ bgcolor: "#10a37f", width: 24, height: 24 }}>
@@ -372,157 +439,178 @@ const ChatBox = () => {
 
         {/* Messages */}
         <MessagesContainer>
-        {messages.length === 0 && (
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "60vh",
-              maxWidth: "768px",
-              textAlign: "center",
-            }}
-          >
-            <Avatar sx={{ bgcolor: "#10a37f", width: 64, height: 64, mb: 3 }}>
-              <Bot size={32} />
-            </Avatar>
-            <Typography variant="h4" sx={{ mb: 2, fontWeight: 600, color: "#fff" }}>
-              How can I help you today?
-            </Typography>
-            <Typography variant="body1" sx={{ color: "#9ca3af", maxWidth: "400px" }}>
-              I'm your RAG Assistant for the {userTeam} team. Ask me anything about your documents and knowledge base.
-            </Typography>
-          </Box>
-        )}
-        {messages.map((msg, index) => (
-          <MessageWrapper key={index} sender={msg.sender}>
-            <MessageContent>
-              <Avatar
-                sx={{
-                  width: 32,
-                  height: 32,
-                  bgcolor: msg.sender === "user" ? "#19c37d" : "#10a37f",
-                  flexShrink: 0,
-                }}
-              >
-                {msg.sender === "user" ? <User size={16} /> : <Bot size={16} />}
+          {messages.length === 0 && (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "60vh",
+                maxWidth: "768px",
+                textAlign: "center",
+              }}
+            >
+              <Avatar sx={{ bgcolor: "#10a37f", width: 64, height: 64, mb: 3 }}>
+                <Bot size={32} />
               </Avatar>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography 
-                  variant="body1" 
-                  sx={{ 
-                    lineHeight: 1.6, 
-                    color: "#fff",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word"
+              <Typography
+                variant="h4"
+                sx={{ mb: 2, fontWeight: 600, color: "#fff" }}
+              >
+                How can I help you today?
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{ color: "#9ca3af", maxWidth: "400px" }}
+              >
+                I'm your RAG Assistant for the {userTeam} team. Ask me anything
+                about your documents and knowledge base.
+              </Typography>
+            </Box>
+          )}
+          {messages.map((msg, index) => (
+            <MessageWrapper key={index} sender={msg.sender}>
+              <MessageContent>
+                <Avatar
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    bgcolor: msg.sender === "user" ? "#19c37d" : "#10a37f",
+                    flexShrink: 0,
                   }}
                 >
-                  {msg.text}
-                </Typography>
-              </Box>
-            </MessageContent>
-          </MessageWrapper>
-        ))}
-      </MessagesContainer>
+                  {msg.sender === "user" ? (
+                    <User size={16} />
+                  ) : (
+                    <Bot size={16} />
+                  )}
+                </Avatar>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      lineHeight: 1.6,
+                      color: "#fff",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {msg.text}
+                  </Typography>
+                </Box>
+              </MessageContent>
+            </MessageWrapper>
+          ))}
+        </MessagesContainer>
 
         {/* Input Area */}
         <InputContainer>
-        <InputWrapper>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Box sx={{ display: "flex", gap: 1 }}>
-              <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Message RAG Assistant..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                multiline
-                maxRows={4}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "12px",
-                    backgroundColor: "#2d2d2d",
-                    border: "1px solid #4d4d4d",
-                    color: "#fff",
+          <InputWrapper>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Message RAG Assistant..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  multiline
+                  maxRows={4}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "12px",
+                      backgroundColor: "#2d2d2d",
+                      border: "1px solid #4d4d4d",
+                      color: "#fff",
+                      "&:hover": {
+                        borderColor: "#6d6d6d",
+                      },
+                      "&.Mui-focused": {
+                        borderColor: "#10a37f",
+                        boxShadow: "0 0 0 3px rgba(16, 163, 127, 0.1)",
+                      },
+                    },
+                    "& .MuiInputBase-input::placeholder": {
+                      color: "#9ca3af",
+                    },
+                  }}
+                />
+                <IconButton
+                  onClick={handleSend}
+                  disabled={!message.trim()}
+                  sx={{
+                    bgcolor: message.trim() ? "#10a37f" : "#f3f4f6",
+                    color: message.trim() ? "white" : "#9ca3af",
                     "&:hover": {
-                      borderColor: "#6d6d6d",
+                      bgcolor: message.trim() ? "#0d8f6b" : "#e5e7eb",
                     },
-                    "&.Mui-focused": {
-                      borderColor: "#10a37f",
-                      boxShadow: "0 0 0 3px rgba(16, 163, 127, 0.1)",
-                    },
-                  },
-                  "& .MuiInputBase-input::placeholder": {
-                    color: "#9ca3af",
-                  },
-                }}
-              />
-              <IconButton
-                onClick={handleSend}
-                disabled={!message.trim()}
+                    borderRadius: "8px",
+                    width: 40,
+                    height: 40,
+                  }}
+                >
+                  <Send size={18} />
+                </IconButton>
+              </Box>
+
+              <Box
                 sx={{
-                  bgcolor: message.trim() ? "#10a37f" : "#f3f4f6",
-                  color: message.trim() ? "white" : "#9ca3af",
-                  "&:hover": { 
-                    bgcolor: message.trim() ? "#0d8f6b" : "#e5e7eb" 
-                  },
-                  borderRadius: "8px",
-                  width: 40,
-                  height: 40,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  justifyContent: "center",
                 }}
               >
-                <Send size={18} />
-              </IconButton>
+                <input
+                  type="file"
+                  onChange={(e) => setFile(e.target.files[0])}
+                  style={{ display: "none" }}
+                  id="file-upload"
+                />
+                <label htmlFor="file-upload">
+                  <Button
+                    component="span"
+                    variant="outlined"
+                    size="small"
+                    startIcon={<Upload size={14} />}
+                    sx={{
+                      borderColor: "#4d4d4d",
+                      color: "#9ca3af",
+                      fontSize: "0.75rem",
+                      "&:hover": { borderColor: "#6d6d6d" },
+                    }}
+                  >
+                    {file
+                      ? file.name.substring(0, 20) +
+                        (file.name.length > 20 ? "..." : "")
+                      : "Upload File"}
+                  </Button>
+                </label>
+                {file && (
+                  <Button
+                    onClick={handleUpload}
+                    variant="contained"
+                    size="small"
+                    startIcon={<Plus size={14} />}
+                    sx={{
+                      bgcolor: "#10a37f",
+                      fontSize: "0.75rem",
+                      "&:hover": { bgcolor: "#0d8f6b" },
+                    }}
+                  >
+                    Upload
+                  </Button>
+                )}
+              </Box>
             </Box>
-            
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-              <input
-                type="file"
-                onChange={(e) => setFile(e.target.files[0])}
-                style={{ display: "none" }}
-                id="file-upload"
-              />
-              <label htmlFor="file-upload">
-                <Button
-                  component="span"
-                  variant="outlined"
-                  size="small"
-                  startIcon={<Upload size={14} />}
-                  sx={{ 
-                    borderColor: "#4d4d4d", 
-                    color: "#9ca3af",
-                    fontSize: "0.75rem",
-                    "&:hover": { borderColor: "#6d6d6d" }
-                  }}
-                >
-                  {file ? file.name.substring(0, 20) + (file.name.length > 20 ? '...' : '') : "Upload File"}
-                </Button>
-              </label>
-              {file && (
-                <Button
-                  onClick={handleUpload}
-                  variant="contained"
-                  size="small"
-                  startIcon={<Plus size={14} />}
-                  sx={{ 
-                    bgcolor: "#10a37f",
-                    fontSize: "0.75rem",
-                    "&:hover": { bgcolor: "#0d8f6b" }
-                  }}
-                >
-                  Upload
-                </Button>
-              )}
-            </Box>
-          </Box>
-        </InputWrapper>
+          </InputWrapper>
         </InputContainer>
       </MainContent>
     </ChatContainer>

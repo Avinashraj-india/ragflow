@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import json
 from rag_engine import RAGEngine
+from kag_service import KAGService
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import jwt
@@ -18,6 +19,7 @@ load_dotenv()
 
 app = FastAPI()
 rag = RAGEngine()
+kag = KAGService()
 init_db()  # Initialize database
 
 app.add_middleware(
@@ -49,6 +51,30 @@ def ask_question(payload: Question):
         print("Error in /ask:", str(e))
         return {"error": str(e)}
 
+@app.post("/kag/ask")
+def kag_ask_question(payload: Question):
+    """KAG-enhanced question answering."""
+    try:
+        if payload.stream:
+            def generate_kag_stream():
+                stream_response = kag.query(payload.query, stream=True)
+                if isinstance(stream_response, dict) and "error" in stream_response:
+                    yield f"{json.dumps(stream_response)}\n"
+                    return
+                for chunk in stream_response:
+                    if hasattr(chunk, 'choices') and chunk.choices[0].delta.content:
+                        yield f"{json.dumps({'response': chunk.choices[0].delta.content})}\n"
+            return StreamingResponse(generate_kag_stream(), media_type="text/plain")
+        else:
+            kag_response = kag.query(payload.query)
+            # Convert KAG format to frontend expected format
+            if "answer" in kag_response:
+                return {"response": kag_response["answer"]}
+            else:
+                return kag_response
+    except Exception as e:
+        return {"error": str(e)}
+
 
 @app.post("/upload")
 def upload_file(file: UploadFile = File(...)):
@@ -56,7 +82,41 @@ def upload_file(file: UploadFile = File(...)):
         rag.add_document(file)
         return {"status": "uploaded and indexed"}
     except Exception as e:
-        print("Error in /ask:", str(e))
+        print("Error in /upload:", str(e))
+        return {"error": str(e)}
+
+@app.post("/kag/upload")
+def kag_upload_file(file: UploadFile = File(...)):
+    """Upload file to KAG system."""
+    try:
+        print(f"KAG Upload: Processing file {file.filename}")
+        content_bytes = file.file.read()
+        
+        # Handle different file types
+        if file.filename.endswith('.pdf'):
+            from pypdf import PdfReader
+            import io
+            pdf_reader = PdfReader(io.BytesIO(content_bytes))
+            content = "\n".join([page.extract_text() for page in pdf_reader.pages])
+            print(f"KAG Upload: Extracted {len(content)} characters from PDF")
+        else:
+            # Try UTF-8 first, fallback to latin-1
+            try:
+                content = content_bytes.decode('utf-8')
+            except UnicodeDecodeError:
+                content = content_bytes.decode('latin-1', errors='ignore')
+            print(f"KAG Upload: Processed text file with {len(content)} characters")
+        
+        if len(content.strip()) == 0:
+            return {"error": "No content extracted from file"}
+        
+        kag.add_document(content, {"filename": file.filename})
+        print(f"KAG Upload: Successfully added document to KAG system")
+        return {"status": "uploaded and indexed in KAG"}
+    except Exception as e:
+        print(f"KAG Upload Error: {e}")
+        import traceback
+        traceback.print_exc()
         return {"error": str(e)}
 
 class GoogleAuth(BaseModel):
